@@ -1,0 +1,64 @@
+{
+  "entities": {
+    "Trip": {
+      "title": "Trip",
+      "description": "A single trip record with fuel and profit details.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique trip ID" },
+        "date": { "type": "string", "format": "date-time", "description": "ISO 8601 timestamp" },
+        "startLocation": { "type": "string", "description": "Starting point" },
+        "destination": { "type": "string", "description": "End point" },
+        "distance": { "type": "number", "description": "Distance in km" },
+        "fuelType": { "type": "string", "enum": ["petrol", "diesel", "cng", "lpg"], "description": "Type of fuel used" },
+        "fuelPrice": { "type": "number", "description": "Price per unit (L or kg)" },
+        "mileage": { "type": "number", "description": "Vehicle mileage (km/L or km/kg)" },
+        "fuelUsed": { "type": "number", "description": "Total fuel used" },
+        "fuelCost": { "type": "number", "description": "Total fuel cost" },
+        "tollCharges": { "type": "number", "description": "Toll expenses" },
+        "parkingCharges": { "type": "number", "description": "Parking expenses" },
+        "otherExpenses": { "type": "number", "description": "Miscellaneous expenses" },
+        "income": { "type": "number", "description": "Total income from the trip" },
+        "totalExpense": { "type": "number", "description": "Sum of all costs" },
+        "netProfit": { "type": "number", "description": "Income minus total expense" },
+        "profitPerKm": { "type": "number", "description": "Profit divided by distance" },
+        "vehicleId": { "type": "string", "description": "Associated vehicle ID" },
+        "uid": { "type": "string", "description": "Owner's user ID" }
+      },
+      "required": ["date", "distance", "fuelType", "fuelPrice", "mileage", "uid"]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "User-specific application settings.",
+      "type": "object",
+      "properties": {
+        "currency": { "type": "string", "description": "Currency symbol" },
+        "defaultFuelType": { "type": "string", "enum": ["petrol", "diesel", "cng", "lpg"], "description": "Default fuel type" },
+        "fuelPrices": { 
+          "type": "object", 
+          "description": "Default prices for each fuel type",
+          "properties": {
+            "petrol": { "type": "number" },
+            "diesel": { "type": "number" },
+            "cng": { "type": "number" },
+            "lpg": { "type": "number" }
+          }
+        },
+        "darkMode": { "type": "boolean", "description": "Dark mode preference" },
+        "language": { "type": "string", "enum": ["en", "ta"], "description": "Preferred language" },
+        "uid": { "type": "string", "description": "Owner's user ID" }
+      },
+      "required": ["currency", "defaultFuelType", "fuelPrices", "darkMode", "language", "uid"]
+    }
+  },
+  "firestore": {
+    "/trips/{tripId}": {
+      "schema": "Trip",
+      "description": "Collection of all trip records."
+    },
+    "/settings/{userId}": {
+      "schema": "UserSettings",
+      "description": "User settings document."
+    }
+  }
+}

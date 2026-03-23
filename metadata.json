@@ -1,0 +1,7 @@
+{
+  "name": "DriveCost: Fuel & Trip Calculator",
+  "description": "A professional fuel and trip expense management software for drivers and transport companies to track mileage, costs, and profits.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

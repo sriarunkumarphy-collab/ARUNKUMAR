@@ -1,0 +1,143 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: trips
+// Document ID: {tripId}
+// Fields:
+//   - id: string (required) - Unique trip ID
+//   - date: string (required) - ISO 8601 timestamp
+//   - startLocation: string (optional)
+//   - destination: string (optional)
+//   - distance: number (required) - km
+//   - fuelType: string (required, enum: ['petrol', 'diesel', 'cng', 'lpg'])
+//   - fuelPrice: number (required) - per unit
+//   - mileage: number (required) - km/unit
+//   - fuelUsed: number (optional)
+//   - fuelCost: number (optional)
+//   - tollCharges: number (optional)
+//   - parkingCharges: number (optional)
+//   - otherExpenses: number (optional)
+//   - income: number (optional)
+//   - totalExpense: number (optional)
+//   - netProfit: number (optional)
+//   - profitPerKm: number (optional)
+//   - vehicleId: string (optional)
+//   - uid: string (required) - Owner's user ID
+//
+// Collection: settings
+// Document ID: {userId}
+// Fields:
+//   - currency: string (required)
+//   - defaultFuelType: string (required, enum: ['petrol', 'diesel', 'cng', 'lpg'])
+//   - fuelPrices: map (required) - { petrol: number, diesel: number, cng: number, lpg: number }
+//   - darkMode: boolean (required)
+//   - language: string (required, enum: ['en', 'ta'])
+//   - uid: string (required) - Owner's user ID
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == request.auth.uid;
+    }
+
+    function uidNotModified() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == resource.data.uid;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "sriarunkumarphy@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidTrip(data) {
+      return hasRequiredFields(['date', 'distance', 'fuelType', 'fuelPrice', 'mileage', 'uid']) &&
+             data.date is string &&
+             data.distance is number && data.distance >= 0 &&
+             data.fuelType in ['petrol', 'diesel', 'cng', 'lpg'] &&
+             data.fuelPrice is number && data.fuelPrice >= 0 &&
+             data.mileage is number && data.mileage > 0 &&
+             data.uid is string &&
+             data.uid == request.auth.uid;
+    }
+
+    function isValidSettings(data) {
+      return hasRequiredFields(['currency', 'defaultFuelType', 'fuelPrices', 'darkMode', 'language', 'uid']) &&
+             data.currency is string && data.currency.size() <= 5 &&
+             data.defaultFuelType in ['petrol', 'diesel', 'cng', 'lpg'] &&
+             data.fuelPrices is map &&
+             data.fuelPrices.petrol is number && data.fuelPrices.petrol >= 0 &&
+             data.fuelPrices.diesel is number && data.fuelPrices.diesel >= 0 &&
+             data.fuelPrices.cng is number && data.fuelPrices.cng >= 0 &&
+             data.fuelPrices.lpg is number && data.fuelPrices.lpg >= 0 &&
+             data.darkMode is bool &&
+             data.language in ['en', 'ta'] &&
+             data.uid is string &&
+             data.uid == request.auth.uid;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /trips/{tripId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidTrip(request.resource.data) && uidUnchanged();
+      allow update: if isDocOwner() && isValidTrip(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
+    }
+
+    match /settings/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidSettings(request.resource.data) && uidUnchanged();
+      allow update: if isOwner(userId) && isValidSettings(request.resource.data) && uidNotModified();
+      allow delete: if isOwner(userId);
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}
